@@ -5,12 +5,15 @@ import numpy as np
 # define a video capture object
 vid = cv2.VideoCapture(2)
 
-scale = 0.3
-minRadius = int(np.ceil(1 * scale))
-maxRadius = int(np.ceil(30 * scale))
+scale = 1
+minRadius = int(np.ceil(10 * scale))
+maxRadius = int(np.ceil(20 * scale))
 
 xCenter = []
 yCenter = []
+
+actualX = 0
+actualY = 0
 
 while True:
     ret, frame = vid.read()
@@ -30,7 +33,7 @@ while True:
                                dp=1.5,
                                minDist=2*minRadius,
                                param1=1,
-                               param2=25,
+                               param2=25-15,
                                minRadius=minRadius,
                                maxRadius=maxRadius
                                )
@@ -42,13 +45,20 @@ while True:
         # processed = cv2.circle(
         #     frame, (int(circles[0]), int(circles[1])), int(circles[2]), (255, 0, 0), 2)
 
-        for idx in range(len(xCenter)):
-            processed = cv2.circle(
-                frame, (int(xCenter[idx]), int(yCenter[idx])), 1, (255, 255, 0), 2)
+        actualX = circles[0]
+        actualY = circles[1]
+
+        if False:
+            for idx in range(len(xCenter)):
+                processed = cv2.circle(
+                    frame, (int(xCenter[idx]), int(yCenter[idx])), 1, (255, 255, 0), 2)
 
     else:
         print("Ball not found")
         processed = frame
+
+    processed = cv2.circle(
+        frame, (int(actualX), int(actualY)), 1, (255, 255, 0), 2)
 
     cv2.namedWindow('frame', cv2.WINDOW_KEEPRATIO)
     cv2.imshow('frame', processed)
