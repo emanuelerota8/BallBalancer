@@ -5,15 +5,15 @@ from simple_pid import PID
 import RPi.GPIO as GPIO
 from pinInterface import setupServo,goToAngle
 
-CLIP_X_MIN =6.25
-CLIP_X_MAX =9.25
-CLIP_Y_MIN =5
-CLIP_Y_MAX = 9
+CLIP_X_MIN =6.25 +1
+CLIP_X_MAX =9.25 -1
+CLIP_Y_MIN =5 +1
+CLIP_Y_MAX = 9 -1
 
 # define a video capture object
 vid = cv2.VideoCapture(0)#2 on laptop
 
-scale = 0.3
+scale = 0.1
 minRadius = int(np.ceil(10 * scale))
 maxRadius = int(np.ceil(20 * scale))
 
@@ -26,22 +26,42 @@ actualY = 0
 pY = setupServo(servoPIN = 27)
 pX = setupServo(servoPIN = 17)
 
+startup = True
+
 while True:
     ret, frame = vid.read()
     
     frame = frame[90:480,180:610]
-    xTarget = int(frame.shape[1] /2)
-    yTarget = int(frame.shape[0] /2)
+   
     #print(frame.shape)
 
     frame = cv2.resize(
         frame, (int(frame.shape[1]*scale), int(frame.shape[0]*scale)))
     
+    xTarget = int(frame.shape[1] /2)
+    yTarget = int(frame.shape[0] /2)
+    
+    if startup:
+        pidX = PID(1, 0.3, 3, setpoint=xTarget)
+        pidY = PID(1, 0.3, 3, setpoint=yTarget)
+        startup=False
+    
     #cv2.imwrite("img.png",frame)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    bilateral = cv2.bilateralFilter(gray, 5, 5, 75)
+    #bilateral = cv2.bilateralFilter(gray, 5, 5, 75)
+    bilateral = gray
+    
+    bilateral[bilateral <= 30] = 0
+    bilateral[bilateral >= 80] = 255
+    bilateral = cv2.bitwise_not(bilateral)
+    
+    # cv2.namedWindow('b', cv2.WINDOW_KEEPRATIO)
+    # cv2.imshow('b', bilateral)
+
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
 
     edges = cv2.Canny(image=bilateral, threshold1=100,
                       threshold2=200)  # Canny Edge
@@ -51,7 +71,7 @@ while True:
                                dp=1.5,
                                minDist=2*minRadius,
                                param1=1,
-                               param2=25-15,
+                               param2=25-15 - 5,
                                minRadius=minRadius,
                                maxRadius=maxRadius
                                )
@@ -79,22 +99,27 @@ while True:
         frame, (int(actualX), int(actualY)), 1, (255, 255, 0), 2)
     
     #PID controller
-    pidX = PID(1, 0.1, 0.05, setpoint=xTarget)
-    controlX = pidX(actualX)
+    
+    controlX = - pidX(actualX)
+    controlY = - pidY(actualY)
     
     
+    w = processed.shape[1]
+    h = processed.shape[0]
+
+    trueActionX =((controlX - (-w/2))/(w/2+w/2) )* (CLIP_X_MAX - CLIP_X_MIN) + CLIP_X_MIN
+    trueActionY =((controlY - (-h/2))/(h/2+h/2) )* (CLIP_Y_MAX - CLIP_Y_MIN) + CLIP_Y_MIN
     
-    trueAction =((controlX - (-100))/(100+100) )* (CLIP_X_MAX - CLIP_X_MIN)
-    
-    #goToAngle(pX,trueAction,CLIP_X_MIN,CLIP_X_MAX)
-    print("true actionn" + str(controlX))
+    goToAngle(pX,trueActionX,CLIP_X_MIN,CLIP_X_MAX)
+    goToAngle(pY,trueActionY,CLIP_Y_MIN,CLIP_Y_MAX)
+    print("true actionn" + str(trueActionX))
 
 
-    cv2.namedWindow('frame', cv2.WINDOW_KEEPRATIO)
-    cv2.imshow('frame', processed)
+    # cv2.namedWindow('frame', cv2.WINDOW_KEEPRATIO)
+    # cv2.imshow('frame', processed)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    # if cv2.waitKey(1) & 0xFF == ord('q'):
+    #     break
 
 
 # After the loop release the cap object

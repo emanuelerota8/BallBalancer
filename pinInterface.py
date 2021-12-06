@@ -6,7 +6,7 @@ ITERATIONS = 2
 LOWER = 6.5
 UPPER = 8.5
 START = 7.5
-SLEEP = 0.5
+SLEEP = 1/30
 
 def setupServo(servoPIN = 17):
     GPIO.setmode(GPIO.BCM)
@@ -34,7 +34,7 @@ def rotateOverFullRange(p,increment):
 def goToAngle(p,angle,clipMin, clipMax):
     angle = np.clip(angle,clipMin,clipMax)
     p.ChangeDutyCycle(angle)
-    time.sleep(SLEEP)
+    #time.sleep(SLEEP)
     pass
 
 
