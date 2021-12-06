@@ -2,7 +2,13 @@ import cv2
 import time
 import numpy as np
 from simple_pid import PID
+import RPi.GPIO as GPIO
 from pinInterface import setupServo,goToAngle
+
+CLIP_X_MIN =6.25
+CLIP_X_MAX =9.25
+CLIP_Y_MIN =5
+CLIP_Y_MAX = 9
 
 # define a video capture object
 vid = cv2.VideoCapture(0)#2 on laptop
@@ -17,17 +23,21 @@ yCenter = []
 actualX = 0
 actualY = 0
 
-p = setupServo()
+pY = setupServo(servoPIN = 27)
+pX = setupServo(servoPIN = 17)
 
 while True:
     ret, frame = vid.read()
     
-    frame = frame[100:400,100:550]
+    frame = frame[90:480,180:610]
+    xTarget = int(frame.shape[1] /2)
+    yTarget = int(frame.shape[0] /2)
     #print(frame.shape)
 
     frame = cv2.resize(
         frame, (int(frame.shape[1]*scale), int(frame.shape[0]*scale)))
     
+    #cv2.imwrite("img.png",frame)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -69,17 +79,15 @@ while True:
         frame, (int(actualX), int(actualY)), 1, (255, 255, 0), 2)
     
     #PID controller
-    pid = PID(1, 0.1, 0.05, setpoint=68)
-    control = pid(actualX)
-    print("control: "+ str(control))
-    print("actual: "+ str(actualX))
-    print("diff: "+ str(actualX-control))
+    pidX = PID(1, 0.1, 0.05, setpoint=xTarget)
+    controlX = pidX(actualX)
     
     
     
-    trueAction =((control - (-100))/(100+100) )* (2)
-    goToAngle(p,trueAction)
-    print("true actionn" + str(trueAction))
+    trueAction =((controlX - (-100))/(100+100) )* (CLIP_X_MAX - CLIP_X_MIN)
+    
+    #goToAngle(pX,trueAction,CLIP_X_MIN,CLIP_X_MAX)
+    print("true actionn" + str(controlX))
 
 
     cv2.namedWindow('frame', cv2.WINDOW_KEEPRATIO)
@@ -93,3 +101,7 @@ while True:
 vid.release()
 # Destroy all the windows
 cv2.destroyAllWindows()
+
+pX.stop()
+pY.stop()
+GPIO.cleanup()

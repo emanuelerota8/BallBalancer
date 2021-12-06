@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import numpy as np
 
 ITERATIONS = 2
 LOWER = 6.5
@@ -7,8 +8,7 @@ UPPER = 8.5
 START = 7.5
 SLEEP = 0.5
 
-def setupServo():
-    servoPIN = 17
+def setupServo(servoPIN = 17):
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(servoPIN,GPIO.OUT)
 
@@ -31,7 +31,8 @@ def rotateOverFullRange(p,increment):
             if count >= UPPER or count <=LOWER:
                 increment*=-1
 
-def goToAngle(p,angle):
+def goToAngle(p,angle,clipMin, clipMax):
+    angle = np.clip(angle,clipMin,clipMax)
     p.ChangeDutyCycle(angle)
     time.sleep(SLEEP)
     pass
@@ -39,7 +40,7 @@ def goToAngle(p,angle):
 
 
 if __name__ == "__main__":
-    p = setupServo()
+    p = setupServo(servoPIN = 17)
     #rotateOverFullRange(p,1):
     for i in range(3):
         goToAngle(p,LOWER)
