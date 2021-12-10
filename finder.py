@@ -50,7 +50,7 @@ def findball(img):
         img = cv2.line(img, (cx, 0), (cx, img.shape[0]), (255, 255, 255), thickness=2)
         img = cv2.line(img, (0, cy), (img.shape[1], cy), (255, 255, 255), thickness=2)
 
-    return None, None, img
+    return cx, cy, img
 
 
 def main():
