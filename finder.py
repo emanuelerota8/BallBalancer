@@ -45,6 +45,7 @@ def findball(img):
 
     idxs = np.argwhere(img == 255)
 
+    cx = cy = None
     if len(idxs) > 0:
         cy, cx = [int(val) for val in np.mean(idxs, axis=0)]
         img = cv2.line(img, (cx, 0), (cx, img.shape[0]), (255, 255, 255), thickness=2)
@@ -54,7 +55,7 @@ def findball(img):
 
 
 def main():
-    cap = cv2.VideoCapture('piatto2.mkv')
+    cap = cv2.VideoCapture('sample_videos/test0.mkv')
 
     i = 0
     while cap.isOpened():
