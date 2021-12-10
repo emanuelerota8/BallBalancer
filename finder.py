@@ -32,32 +32,13 @@ def filterOutsidePlate(img, debug: bool = False):
         preview = orig.copy()
         preview = cv2.cvtColor(preview, cv2.COLOR_GRAY2BGR)
         preview = cv2.drawContours(preview, [cnt], -1, (0, 255, 75), -1)
-    # perim = cv2.arcLength(cnt, True)
-    # # setting the precision
-    # epsilon = 0.02*perim
-    # # approximating the contour with a polygon
-    # approxCorners = cv2.approxPolyDP(cnt, epsilon, True)
-    # check how many vertices has the approximate polygon
-    # img = cv2.drawContours(img, [approxCorners], -1, (0, 0, 255), 2)
     orig[mask != 255] = 0
     return orig, preview
 
 
-def findball(img, minRadius=0.10, maxRadius=0.15):
-    # img = cv2.Canny(img, 400, 400/3)
-    # minRadius = int(minRadius * min(img.shape))
-    # maxRadius = int(maxRadius * max(img.shape))
-    # circles = cv2.HoughCircles(image=img,
-    #                            method=cv2.HOUGH_GRADIENT,
-    #                            dp=1.5,
-    #                            minDist=2*minRadius,
-    #                            param1=1,
-    #                            param2=25-15 - 5,
-    #                            minRadius=minRadius,
-    #                            maxRadius=maxRadius
-    #                            )
+def findball(img):
     img[img == 0] = 255
-    tresh, img = cv2.threshold(img, np.median(img)*.5, 255, cv2.THRESH_BINARY_INV)
+    _, img = cv2.threshold(img, np.median(img)*.5, 255, cv2.THRESH_BINARY_INV)
 
     kernel = np.ones((8, 8))
     img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
@@ -66,8 +47,6 @@ def findball(img, minRadius=0.10, maxRadius=0.15):
 
     if len(idxs) > 0:
         cy, cx = [int(val) for val in np.mean(idxs, axis=0)]
-
-        # cx, cy, *_ = [int(val) for val in circles[0, 0]]
         img = cv2.line(img, (cx, 0), (cx, img.shape[0]), (255, 255, 255), thickness=2)
         img = cv2.line(img, (0, cy), (img.shape[1], cy), (255, 255, 255), thickness=2)
 
@@ -84,8 +63,6 @@ def main():
         frame = preprocess(frame)
 
         i += 1
-        # if i < 800:
-        #     continue
         start_time = time.time()
         cv2.imshow('window-name', frame)
         frame, preview = filterOutsidePlate(frame, debug=True)
