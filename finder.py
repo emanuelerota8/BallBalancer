@@ -54,6 +54,8 @@ def findball(img, debug_img=None):
             # debug_img = cv2.addWeighted(debug_img, 1, ball_area, 1, 0)
             debug_img = cv2.line(debug_img, (cx, 0), (cx, debug_img.shape[0]), (255, 255, 255), thickness=2)
             debug_img = cv2.line(debug_img, (0, cy), (debug_img.shape[1], cy), (255, 255, 255), thickness=2)
+        cx /= img.shape[1]
+        cy /= img.shape[0]
 
     return cx, cy, debug_img
 
