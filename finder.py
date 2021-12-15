@@ -58,11 +58,15 @@ def findball(img, debug_img=None):
 
 
 def main():
+    SCALE = 0.5
+
     cap = cv2.VideoCapture('sample_videos/test0.mkv')
 
     i = 0
     while cap.isOpened():
         _, frame = cap.read()
+        frame = cv2.resize(frame, (int(frame.shape[1] * SCALE), int(frame.shape[0] * SCALE)))
+
         # frame = cv2.resize(frame, (200, 200))
         frame = preprocess(frame)
 
