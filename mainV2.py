@@ -66,9 +66,9 @@ def main(args):
             cy = kalmanY.getEstimate(cy)[0]
 
         if startup:
-            pidX = PID(.2, 0, 0.05, setpoint=xTarget)
+            pidX = PID(.18, 0, 0.07, setpoint=xTarget)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(.2, 0, 0.05, setpoint=yTarget)
+            pidY = PID(.18, 0, 0.07, setpoint=yTarget)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
