@@ -23,7 +23,7 @@ def main(args):
 
     input("Press enter to continue")
 
-    T = 30/1000  # TODO
+    T = 30/1000  # TODO: BUG: non è 1000/30??
     startup = True
 
     kalmanX = KalmanFiltering(T)
@@ -56,17 +56,14 @@ def main(args):
         if cy is None:
             cy = precY
 
+        # TODO: put AFTER kalman estimate
         precX = cx
         precY = cy
 
-        cxK = kalmanX.getEstimate(cx)[0]
-        cyK = kalmanY.getEstimate(cy)[0]
-
-        print("coords: " + str(cxK) + "  " + str(cyK))
-
-        # override kalman filter
-        # cxK=cx
-        # cyK=cy
+        # Kalman prediction
+        if args.nokalman != True:
+            cx = kalmanX.getEstimate(cx)[0]
+            cy = kalmanY.getEstimate(cy)[0]
 
         if startup:
             pidX = PID(.2, 0, 0.05, setpoint=xTarget)
@@ -94,7 +91,7 @@ def main(args):
         servoX.setAngle(controlX)
         servoY.setAngle(controlY)
 
-        print("mapped"+str(controlX))
+        # print("mapped"+str(controlX))
 
         timeEnd = round(time.time() * 1000)
         print("framerate: "+str(timeEnd-timeStart))
@@ -114,6 +111,10 @@ def parse_args():
         '--video',
         action='store_true',
         help='Enable video preview')
+    argparser.add_argument(
+        '--nokalman',
+        action='store_true',
+        help='Disable kalman filter')
 
     return argparser.parse_args()
 
