@@ -34,5 +34,3 @@ class KalmanFiltering():
         self.f.update(z)
         # print(self.f.P_post)
         return self.f.x
-
-
