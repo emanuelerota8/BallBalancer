@@ -69,8 +69,10 @@ def main(args):
         # cyK=cy
 
         if startup:
-            pidX = PID(1, 0, 0.1, setpoint=xTarget)
-            pidY = PID(1, 0, 0.1, setpoint=yTarget)
+            pidX = PID(.2, 0, 0.05, setpoint=xTarget)
+            pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
+            pidY = PID(.2, 0, 0.05, setpoint=yTarget)
+            pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
         if args.video:
@@ -80,14 +82,14 @@ def main(args):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-        controlX = pidX(cxK)
-        controlY = pidY(cyK)
-        print("pid: "+str(controlX))
+        controlX = pidX(cx)
+        controlY = pidY(cy)
+        print("pid: " + str(controlX))
 
-        w = 50  # frame.shape[1]*1
-        h = 50  # frame.shape[0]*1
-        controlX = ((controlX - (-w/2))/(w/2+w/2)) * (CLIP_X_MAX - CLIP_X_MIN) + CLIP_X_MIN
-        controlY = ((controlY - (-h/2))/(h/2+h/2)) * (CLIP_Y_MAX - CLIP_Y_MIN) + CLIP_Y_MIN
+        # w = 50  # frame.shape[1]*1
+        # h = 50  # frame.shape[0]*1
+        # controlX = ((controlX - (-w/2))/(w/2+w/2)) * (CLIP_X_MAX - CLIP_X_MIN) + CLIP_X_MIN
+        # controlY = ((controlY - (-h/2))/(h/2+h/2)) * (CLIP_Y_MAX - CLIP_Y_MIN) + CLIP_Y_MIN
 
         servoX.setAngle(controlX)
         servoY.setAngle(controlY)
