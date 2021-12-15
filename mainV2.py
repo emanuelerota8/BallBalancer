@@ -77,19 +77,11 @@ def main(args):
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+        # Apply control
         controlX = pidX(cx)
         controlY = pidY(cy)
-        print("pid: " + str(controlX))
-
-        # w = 50  # frame.shape[1]*1
-        # h = 50  # frame.shape[0]*1
-        # controlX = ((controlX - (-w/2))/(w/2+w/2)) * (CLIP_X_MAX - CLIP_X_MIN) + CLIP_X_MIN
-        # controlY = ((controlY - (-h/2))/(h/2+h/2)) * (CLIP_Y_MAX - CLIP_Y_MIN) + CLIP_Y_MIN
-
         servoX.setAngle(controlX)
         servoY.setAngle(controlY)
-
-        # print("mapped"+str(controlX))
 
         timeEnd = round(time.time() * 1000)
         print("framerate: "+str(timeEnd-timeStart))
