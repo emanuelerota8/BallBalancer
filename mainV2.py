@@ -23,7 +23,7 @@ def main(args):
 
     input("Press enter to continue")
 
-    T = 30/1000  # TODO: BUG: non è 1000/30??
+    T = 1000/30
     startup = True
 
     kalmanX = KalmanFiltering(T)
