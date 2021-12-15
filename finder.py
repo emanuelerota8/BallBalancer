@@ -59,10 +59,11 @@ def findball(img, debug_img=None):
 
 
 def addCrosshair(img, size=.1):
-    cy, cx, *_ = [int(val / 2) for val in img.shape]
-    sz = int(max(img.shape) * size)
-    img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), (255, 255, 255), thickness=2)
-    img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), (255, 255, 255), thickness=2)
+    if img is not None:
+        cy, cx, *_ = [int(val / 2) for val in img.shape]
+        sz = int(max(img.shape) * size)
+        img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), (255, 255, 255), thickness=2)
+        img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), (255, 255, 255), thickness=2)
     return img
 
 
