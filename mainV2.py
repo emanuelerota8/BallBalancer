@@ -16,8 +16,6 @@ def main(args):
     # define a video capture object
     vid = cv2.VideoCapture(0)  # 2 on laptop
 
-    scale = 0.4  # da abbassare per avere meno problemi di centro,
-
     servoX = ServoControl(17, CLIP_X_MIN, CLIP_X_MAX)
     servoY = ServoControl(27, CLIP_Y_MIN, CLIP_Y_MAX)
 
@@ -40,7 +38,7 @@ def main(args):
         timeStart = round(time.time() * 1000)
 
         # Ball tracking
-        frame = preprocess(frame, scale=scale)
+        frame = preprocess(frame, scale=args.scale)
         preview = frame if args.video else None
         frame, preview = filterOutsidePlate(frame, debug_img=preview)
         cx, cy, preview = findball(frame, debug_img=preview)
@@ -115,6 +113,12 @@ def parse_args():
         '--nokalman',
         action='store_true',
         help='Disable kalman filter')
+    argparser.add_argument(
+        '--scale',
+        type=float,
+        default=0.4,
+        help='Camera downscaling')
+
 
     return argparser.parse_args()
 
