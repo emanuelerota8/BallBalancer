@@ -13,6 +13,13 @@ def main(args):
     CLIP_Y_MIN = -15
     CLIP_Y_MAX = 15
 
+    TARGET_X = .5
+    TARGET_Y = .5
+
+    P = 45
+    I = 0
+    D = 0
+
     # define a video capture object
     vid = cv2.VideoCapture(0)  # 2 on laptop
 
@@ -30,12 +37,12 @@ def main(args):
     # storicoX = []
     # storicoXKalman = []
 
-    precX = 0
-    precY = 0
+    precX = .5
+    precY = .5
 
     for i in range(10000):
         _, frame = vid.read()
-        timeStart = round(time.time() * 1000)
+        timeStart = time.time()
 
         # Ball tracking
         frame = preprocess(frame, scale=args.scale)
@@ -64,9 +71,9 @@ def main(args):
             cy = kalmanY.getEstimate(cy)[0]
 
         if startup:
-            pidX = PID(.18, 0, 0.07, setpoint=xTarget)
+            pidX = PID(P, I, D, setpoint=TARGET_X)
+            pidY = PID(P, I, D, setpoint=TARGET_Y)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(.18, 0, 0.07, setpoint=yTarget)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
@@ -83,8 +90,8 @@ def main(args):
         servoX.setAngle(controlX)
         servoY.setAngle(controlY)
 
-        timeEnd = round(time.time() * 1000)
-        print("framerate: "+str(timeEnd-timeStart))
+        fps = 1 / (time.time() - timeStart)
+        print(f'FPS={fps:.1f} BALL=({cx:.2f}, {cy:.2f}) PID_CONTROL=({controlX:.2f}, {controlY:.2f})')
 
     # After the loop release the cap object
     vid.release()

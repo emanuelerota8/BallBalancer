@@ -4,6 +4,11 @@ import time
 
 
 def preprocess(img, scale=.5):
+    h, w, *_ = img.shape
+    if w > h:
+        diff = int((w - h) / 2)
+        img = img[:,diff:-diff,:]
+    print(img.shape)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = cv2.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
     img = cv2.GaussianBlur(img, (3, 3), sigmaX=0, sigmaY=0)
