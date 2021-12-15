@@ -3,8 +3,9 @@ import numpy as np
 import time
 
 
-def preprocess(img):
+def preprocess(img, scale=.5):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
     img = cv2.GaussianBlur(img, (3, 3), sigmaX=0, sigmaY=0)
     return img
 
@@ -57,17 +58,21 @@ def findball(img, debug_img=None):
     return cx, cy, debug_img
 
 
-def main():
-    SCALE = 0.5
+def addCrosshair(img, size=.1):
+    cy, cx, *_ = [int(val / 2) for val in img.shape]
+    sz = int(max(img.shape) * size)
+    img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), (255, 255, 255), thickness=2)
+    img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), (255, 255, 255), thickness=2)
+    return img
 
-    cap = cv2.VideoCapture('sample_videos/test0.mkv')
+
+def main():
+    cap = cv2.VideoCapture('sample_videos/test2.mkv')
 
     i = 0
     while cap.isOpened():
         _, frame = cap.read()
-        frame = cv2.resize(frame, (int(frame.shape[1] * SCALE), int(frame.shape[0] * SCALE)))
 
-        # frame = cv2.resize(frame, (200, 200))
         frame = preprocess(frame)
 
         i += 1
@@ -77,6 +82,7 @@ def main():
 
         cx, cy, preview = findball(frame, debug_img=preview)
 
+        preview = addCrosshair(preview)
         cv2.imshow('window-name2', preview)
         if cv2.waitKey(10) & 0xFF == ord('q'):
             break
