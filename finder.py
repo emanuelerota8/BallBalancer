@@ -6,6 +6,31 @@ import matplotlib.pyplot as plt
 import pickle
 
 
+#img: frame originale della camera (non ancora ridimensionato)
+#funziona con pallina BLU
+def preprocessPidTuning(img,scale=.5):
+    img = cv2.resize(
+        img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
+    
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    delta=15
+    blue_lower=np.array([100-delta,150-delta,0],np.uint8)
+    blue_upper=np.array([140+delta,255,255],np.uint8)
+    
+    mask = cv2.inRange(hsv, blue_lower, blue_upper)
+    cv2.imshow('mask',mask)
+
+    idxs = np.argwhere(mask == 255)
+    cx = cy = None
+    if len(idxs) > 0:
+        cy, cx = np.mean(idxs, axis=0)
+
+    image = cv2.circle(img, (int(cx),int(cy)), 10, (255,255,0), -1)
+    cv2.imshow('detectedHSV',image)
+
+    return mask, cx,cy
+
 def preprocess(img, scale=.5):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = cv2.resize(
@@ -95,12 +120,17 @@ def main():
 
         if frame is None:
             break
+    
+        mask,cxHSV,cyHSV = preprocessPidTuning(frame)
         frame = preprocess(frame)
+        
 
         i += 1
         start_time = time.time()
         cv2.imshow('window-name', frame)
         frame, preview = filterOutsidePlate(frame, debug_img=frame)
+
+        
 
         cx, cy, preview = findball(frame, debug_img=preview)
 
