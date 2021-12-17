@@ -88,6 +88,8 @@ def main():
     while cap.isOpened():
         _, frame = cap.read()
 
+        if frame is None:
+            break
         frame = preprocess(frame)
 
         i += 1
