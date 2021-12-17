@@ -78,7 +78,7 @@ def main():
     historyX = []
     historyY = []
     historyXK = []
-    historyXK = []
+    historyYK = []
 
     T = 1000/30
     kalmanX = KalmanFiltering(T)
@@ -116,7 +116,7 @@ def main():
     
     plt.plot(historyX)
     plt.plot(historyXK)
-    plt.show
+    plt.show()
 
 if __name__ == "__main__":
     main()
