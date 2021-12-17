@@ -42,11 +42,11 @@ def main(args):
         preview = frame if args.video else None
         frame, preview = filterOutsidePlate(frame, debug_img=preview)
         cx, cy, preview = findball(frame, debug_img=preview)
-        preview = addCrosshair(preview)
 
         # DEFINE PID TARGET TO THE CENTER
         xTarget = int(frame.shape[1] /2)
         yTarget = int(frame.shape[0] /2)
+        preview = addCrosshair(preview, x=xTarget, y=yTarget)
 
         if cx is None:
             cx = precX
@@ -62,11 +62,12 @@ def main(args):
         if args.nokalman != True:
             cx = kalmanX.getEstimate(cx)[0]
             cy = kalmanY.getEstimate(cy)[0]
+        preview = addCrosshair(preview, x=cx, y=cy, color=(0,0,255), size=.05)
 
         if startup:
-            pidX = PID(.18, 0, 0.07, setpoint=xTarget)
+            pidX = PID(.18, 0.0, 0.07, setpoint=xTarget)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(.18, 0, 0.07, setpoint=yTarget)
+            pidY = PID(.18, 0.0, 0.07, setpoint=yTarget)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 

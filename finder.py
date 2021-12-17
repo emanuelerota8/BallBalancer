@@ -37,7 +37,7 @@ def filterOutsidePlate(img, debug_img=None):
 def findball(img, debug_img=None):
     # Find darkest pixels and erode them a bit to
     # cancel out any line or stick inside the image
-    _, img = cv2.threshold(img, np.median(img)*.5, 255, cv2.THRESH_BINARY_INV)
+    _, img = cv2.threshold(img, np.median(img)*.25, 255, cv2.THRESH_BINARY_INV)
     kernel = np.ones((8, 8))
     img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
     # Find average pixel coords, if there is any
@@ -54,23 +54,24 @@ def findball(img, debug_img=None):
             # debug_img = cv2.addWeighted(debug_img, 1, ball_area, 1, 0)
             debug_img = cv2.line(debug_img, (cx, 0), (cx, debug_img.shape[0]), (255, 255, 255), thickness=2)
             debug_img = cv2.line(debug_img, (0, cy), (debug_img.shape[1], cy), (255, 255, 255), thickness=2)
-        cx /= img.shape[1]
-        cy /= img.shape[0]
+        # cx /= img.shape[1]
+        # cy /= img.shape[0]
 
     return cx, cy, debug_img
 
 
-def addCrosshair(img, size=.1):
+def addCrosshair(img, x = 0.5, y = 0.5, size=.1, color=(255, 255, 255)):
     if img is not None:
-        cy, cx, *_ = [int(val / 2) for val in img.shape]
+        cy = int(y) #int(img.shape[0] * y)
+        cx = int(x) #int(img.shape[1] * x)
         sz = int(max(img.shape) * size)
-        img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), (255, 255, 255), thickness=2)
-        img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), (255, 255, 255), thickness=2)
+        img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), color, thickness=2)
+        img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), color, thickness=2)
     return img
 
 
 def main():
-    cap = cv2.VideoCapture('sample_videos/test2.mkv')
+    cap = cv2.VideoCapture('sample_videos/test1.mkv')
 
     i = 0
     while cap.isOpened():
