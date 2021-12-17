@@ -35,7 +35,7 @@ def main(args):
 
     for i in range(10000):
         _, frame = vid.read()
-        timeStart = round(time.time() * 1000)
+        timeStart = time.time()
 
         # Ball tracking
         frame = preprocess(frame, scale=args.scale)
@@ -54,20 +54,20 @@ def main(args):
         if cy is None:
             cy = precY
 
-        # TODO: put AFTER kalman estimate
-        precX = cx
-        precY = cy
-
         # Kalman prediction
         if args.nokalman != True:
             cx = kalmanX.getEstimate(cx)[0]
             cy = kalmanY.getEstimate(cy)[0]
         preview = addCrosshair(preview, x=cx, y=cy, color=(0,0,255), size=.05)
 
+        
+        precX = cx
+        precY = cy
+
         if startup:
-            pidX = PID(.18, 0.0, 0.07, setpoint=xTarget)
+            pidX = PID(0.18/2, 0.0, 0.0, setpoint=xTarget,sample_time=T/1000)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(.18, 0.0, 0.07, setpoint=yTarget)
+            pidY = PID(0.18/2, 0.0, 0.0, setpoint=yTarget,sample_time=T/1000)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
@@ -84,8 +84,16 @@ def main(args):
         servoX.setAngle(controlX)
         servoY.setAngle(controlY)
 
-        timeEnd = round(time.time() * 1000)
-        print("framerate: "+str(timeEnd-timeStart))
+        deltaTime = max( 1/29 - (time.time() - timeStart),0)
+        
+        time.sleep(deltaTime)
+
+        fps = 1 / (time.time() - timeStart)
+
+
+
+
+        print(f'FPS={fps:.1f} BALL=({cx:.2f}, {cy:.2f}) PID_CONTROL=({controlX:.2f}, {controlY:.2f})')
 
     # After the loop release the cap object
     vid.release()

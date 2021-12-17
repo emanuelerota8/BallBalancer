@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 import time
+from KalmanFiltering import KalmanFiltering
+import matplotlib.pyplot as plt
 
 
 def preprocess(img, scale=.5):
@@ -38,13 +40,13 @@ def findball(img, debug_img=None):
     # Find darkest pixels and erode them a bit to
     # cancel out any line or stick inside the image
     _, img = cv2.threshold(img, np.median(img)*.25, 255, cv2.THRESH_BINARY_INV)
-    kernel = np.ones((8, 8))
+    kernel = np.ones((3, 3))
     img = cv2.morphologyEx(img, cv2.MORPH_ERODE, kernel)
     # Find average pixel coords, if there is any
     idxs = np.argwhere(img == 255)
     cx = cy = None
     if len(idxs) > 0:
-        cy, cx = [int(val) for val in np.mean(idxs, axis=0)]
+        cy, cx = np.mean(idxs, axis=0)
         # Render image  with crosshair for debugging purposes
         if debug_img is not None:
             if len(debug_img.shape) == 2:
@@ -52,8 +54,8 @@ def findball(img, debug_img=None):
             ball_area = debug_img * 0
             debug_img[img == 255] = [255, 0,  0]
             # debug_img = cv2.addWeighted(debug_img, 1, ball_area, 1, 0)
-            debug_img = cv2.line(debug_img, (cx, 0), (cx, debug_img.shape[0]), (255, 255, 255), thickness=2)
-            debug_img = cv2.line(debug_img, (0, cy), (debug_img.shape[1], cy), (255, 255, 255), thickness=2)
+            debug_img = cv2.line(debug_img, (int(cx), 0), (int(cx), debug_img.shape[0]), (255, 255, 255), thickness=2)
+            debug_img = cv2.line(debug_img, (0, int(cy)), (debug_img.shape[1], int(cy)), (255, 255, 255), thickness=2)
         # cx /= img.shape[1]
         # cy /= img.shape[0]
 
@@ -73,6 +75,15 @@ def addCrosshair(img, x = 0.5, y = 0.5, size=.1, color=(255, 255, 255)):
 def main():
     cap = cv2.VideoCapture('sample_videos/test1.mkv')
 
+    historyX = []
+    historyY = []
+    historyXK = []
+    historyXK = []
+
+    T = 1000/30
+    kalmanX = KalmanFiltering(T)
+    kalmanY = KalmanFiltering(T)
+
     i = 0
     while cap.isOpened():
         _, frame = cap.read()
@@ -86,6 +97,14 @@ def main():
 
         cx, cy, preview = findball(frame, debug_img=preview)
 
+        cxK = kalmanX.getEstimate(cx)[0]
+        cyK = kalmanY.getEstimate(cy)[0]
+
+        historyX.append(cx)
+        historyY.append(cy)
+        historyXK.append(cxK)
+        historyYK.append(cyK)
+
         preview = addCrosshair(preview)
         cv2.imshow('window-name2', preview)
         if cv2.waitKey(10) & 0xFF == ord('q'):
@@ -94,7 +113,10 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()  # destroy all opened windows
-
+    
+    plt.plot(historyX)
+    plt.plot(historyXK)
+    plt.show
 
 if __name__ == "__main__":
     main()
