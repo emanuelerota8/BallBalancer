@@ -3,11 +3,38 @@ import numpy as np
 import time
 from KalmanFiltering import KalmanFiltering
 import matplotlib.pyplot as plt
+import pickle
 
+
+#img: frame originale della camera (non ancora ridimensionato)
+#funziona con pallina BLU
+def preprocessPidTuning(img,scale=.5):
+    img = cv2.resize(
+        img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
+    
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    delta=15
+    blue_lower=np.array([100-delta,150-delta,0],np.uint8)
+    blue_upper=np.array([140+delta,255,255],np.uint8)
+    
+    mask = cv2.inRange(hsv, blue_lower, blue_upper)
+    cv2.imshow('mask',mask)
+
+    idxs = np.argwhere(mask == 255)
+    cx = cy = None
+    if len(idxs) > 0:
+        cy, cx = np.mean(idxs, axis=0)
+
+    image = cv2.circle(img, (int(cx),int(cy)), 10, (255,255,0), -1)
+    cv2.imshow('detectedHSV',image)
+
+    return mask, cx,cy
 
 def preprocess(img, scale=.5):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = cv2.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
+    img = cv2.resize(
+        img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
     img = cv2.GaussianBlur(img, (3, 3), sigmaX=0, sigmaY=0)
     return img
 
@@ -19,7 +46,8 @@ def filterOutsidePlate(img, debug_img=None):
     mask = cv2.morphologyEx(mask, cv2.MORPH_DILATE, kernel)
     mask = np.bitwise_not(mask)
     # Get convex hull of the biggest white area
-    cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts, _ = cv2.findContours(
+        mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
     cnt = cnts[0]
     cnt = cv2.convexHull(cnt, False)
@@ -54,18 +82,20 @@ def findball(img, debug_img=None):
             ball_area = debug_img * 0
             debug_img[img == 255] = [255, 0,  0]
             # debug_img = cv2.addWeighted(debug_img, 1, ball_area, 1, 0)
-            debug_img = cv2.line(debug_img, (int(cx), 0), (int(cx), debug_img.shape[0]), (255, 255, 255), thickness=2)
-            debug_img = cv2.line(debug_img, (0, int(cy)), (debug_img.shape[1], int(cy)), (255, 255, 255), thickness=2)
+            debug_img = cv2.line(debug_img, (int(cx), 0), (int(
+                cx), debug_img.shape[0]), (255, 255, 255), thickness=2)
+            debug_img = cv2.line(debug_img, (0, int(
+                cy)), (debug_img.shape[1], int(cy)), (255, 255, 255), thickness=2)
         # cx /= img.shape[1]
         # cy /= img.shape[0]
 
     return cx, cy, debug_img
 
 
-def addCrosshair(img, x = 0.5, y = 0.5, size=.1, color=(255, 255, 255)):
+def addCrosshair(img, x=0.5, y=0.5, size=.1, color=(255, 255, 255)):
     if img is not None:
-        cy = int(y) #int(img.shape[0] * y)
-        cx = int(x) #int(img.shape[1] * x)
+        cy = int(y)  # int(img.shape[0] * y)
+        cx = int(x)  # int(img.shape[1] * x)
         sz = int(max(img.shape) * size)
         img = cv2.line(img, (cx-sz, cy), (cx+sz, cy), color, thickness=2)
         img = cv2.line(img, (cx, cy-sz), (cx, cy+sz), color, thickness=2)
@@ -90,12 +120,17 @@ def main():
 
         if frame is None:
             break
+    
+        mask,cxHSV,cyHSV = preprocessPidTuning(frame)
         frame = preprocess(frame)
+        
 
         i += 1
         start_time = time.time()
         cv2.imshow('window-name', frame)
         frame, preview = filterOutsidePlate(frame, debug_img=frame)
+
+        
 
         cx, cy, preview = findball(frame, debug_img=preview)
 
@@ -115,10 +150,10 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()  # destroy all opened windows
-    
-    plt.plot(historyX)
-    plt.plot(historyXK)
-    plt.show()
+
+    with open("x", "wb") as f:
+        pickle.dump([historyX, historyY, historyXK, historyYK], f)
+
 
 if __name__ == "__main__":
     main()
