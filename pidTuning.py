@@ -24,12 +24,6 @@ def main(args):
     T = 1000/30
     startup = True
 
-    kalmanX = KalmanFiltering(T)
-    kalmanY = KalmanFiltering(T)
-
-    # storicoX = []
-    # storicoXKalman = []
-
     precX = 0
     precY = 0
 
@@ -54,20 +48,14 @@ def main(args):
         if cy is None:
             cy = precY
 
-        # Kalman prediction
-        if args.nokalman != True:
-            cx = kalmanX.getEstimate(cx)[0]
-            cy = kalmanY.getEstimate(cy)[0]
-        preview = addCrosshair(preview, x=cx, y=cy, color=(0,0,255), size=.05)
-
         
         precX = cx
         precY = cy
 
         if startup:
-            pidX = PID(0.12, 0.02, 0.07, setpoint=xTarget,sample_time=T/1000)
+            pidX = PID(0.12, 0, 0, setpoint=xTarget,sample_time=T/1000)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(0.12, 0.02, 0.07, setpoint=yTarget,sample_time=T/1000)
+            pidY = PID(0.12, 0, 0, setpoint=yTarget,sample_time=T/1000)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
