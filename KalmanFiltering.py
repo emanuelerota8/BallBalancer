@@ -27,7 +27,7 @@ class KalmanFiltering():
         # define mesarument noise matrix
         self.f.R = np.array([[0.03]])
 
-        self.f.Q = Q_discrete_white_noise(dim=3, dt=T, var=50*0.1)
+        self.f.Q = Q_discrete_white_noise(dim=3, dt=T, var=50)
 
     def getEstimate(self, z):
         self.f.predict()
