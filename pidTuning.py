@@ -3,15 +3,15 @@ import time
 from simple_pid import PID
 from ServoControl import ServoControl
 from KalmanFiltering import KalmanFiltering
-from finder import preprocess, filterOutsidePlate, findball, addCrosshair
+from finder import preprocess, filterOutsidePlate, findball, addCrosshair,preprocessPidTuning
 import argparse
 
 def main(args):
     # SETTING MAX ANGLE CONTROLLABLE
-    CLIP_X_MIN = -15
-    CLIP_X_MAX = 15
-    CLIP_Y_MIN = -15
-    CLIP_Y_MAX = 15
+    CLIP_X_MIN = -15-5
+    CLIP_X_MAX = 15+5
+    CLIP_Y_MIN = -15-5
+    CLIP_Y_MAX = 15+5
 
     # define a video capture object
     vid = cv2.VideoCapture(0)  # 2 on laptop
@@ -32,15 +32,19 @@ def main(args):
         timeStart = time.time()
 
         # Ball tracking
-        frame = preprocess(frame, scale=args.scale)
-        preview = frame if args.video else None
-        frame, preview = filterOutsidePlate(frame, debug_img=preview)
-        cx, cy, preview = findball(frame, debug_img=preview)
+        # frame = preprocess(frame, scale=args.scale)
+        # preview = frame if args.video else None
+        # frame, preview = filterOutsidePlate(frame, debug_img=preview)
+        # cx, cy, preview = findball(frame, debug_img=preview)
+        frame,cx,cy = preprocessPidTuning(frame)
+
 
         # DEFINE PID TARGET TO THE CENTER
         xTarget = int(frame.shape[1] /2)
         yTarget = int(frame.shape[0] /2)
-        preview = addCrosshair(preview, x=xTarget, y=yTarget)
+        print(xTarget)
+        print(yTarget)
+        #preview = addCrosshair(preview, x=xTarget, y=yTarget)
 
         if cx is None:
             cx = precX
@@ -48,14 +52,20 @@ def main(args):
         if cy is None:
             cy = precY
 
-        
         precX = cx
         precY = cy
 
+        Ku = 0.05
+        P = 5
+
+        kp = 0.3
+        Ki = 0.12*1.5
+        Kd = 0.1875
+
         if startup:
-            pidX = PID(0.12, 0, 0, setpoint=xTarget,sample_time=T/1000)
+            pidX = PID(Kp, Ki, Kd, setpoint=xTarget,sample_time=T/1000)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(0.12, 0, 0, setpoint=yTarget,sample_time=T/1000)
+            pidY = PID(Kp, Ki, Kd, setpoint=yTarget,sample_time=T/1000)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
 
@@ -69,7 +79,7 @@ def main(args):
         # Apply control
         controlX = pidX(cx)
         controlY = pidY(cy)
-        servoX.setAngle(controlX)
+        servoX.setAngle(0)#TODO
         servoY.setAngle(controlY)
 
         deltaTime = max( 1/29 - (time.time() - timeStart),0)

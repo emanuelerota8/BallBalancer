@@ -5,13 +5,21 @@ from ServoControl import ServoControl
 from KalmanFiltering import KalmanFiltering
 from finder import preprocess, filterOutsidePlate, findball, addCrosshair
 import argparse
+import numpy as np
+import math
 
 def main(args):
     # SETTING MAX ANGLE CONTROLLABLE
-    CLIP_X_MIN = -15
-    CLIP_X_MAX = 15
-    CLIP_Y_MIN = -15
-    CLIP_Y_MAX = 15
+    CLIP_X_MIN = -20
+    CLIP_X_MAX = 20
+    CLIP_Y_MIN = -20
+    CLIP_Y_MAX = 20
+
+    DRAWCIRCLE = True
+
+    #controll history
+    controlHistoryX = []
+    controlHistoryY = []
 
     # define a video capture object
     vid = cv2.VideoCapture(0)  # 2 on laptop
@@ -63,13 +71,32 @@ def main(args):
         
         precX = cx
         precY = cy
+        
+        Kp = 0.03*3
+        Ki = 0.012*3
+        Kd = 0.01875*3.5
 
         if startup:
-            pidX = PID(0.12, 0.02, 0.07, setpoint=xTarget,sample_time=T/1000)
+            pidX = PID(Kp, Ki, Kd, setpoint=xTarget,sample_time=T/1000)
             pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
-            pidY = PID(0.12, 0.02, 0.07, setpoint=yTarget,sample_time=T/1000)
+            pidY = PID(Kp, Ki, Kd, setpoint=yTarget,sample_time=T/1000)
             pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
             startup = False
+            angle = 0
+
+        if DRAWCIRCLE:
+            angle +=1
+            angle = angle%360
+            rad = angle*3.14/180
+            radius = 50
+
+            newX = xTarget + math.cos(rad)*radius
+            newY = yTarget + math.sin(rad)*radius
+            print(newX)
+            print(newY)
+
+            pidX.setpoint = newX
+            pidY.setpoint = newY
 
         if args.video:
             cv2.namedWindow('Tracker', cv2.WINDOW_KEEPRATIO)
@@ -81,8 +108,23 @@ def main(args):
         # Apply control
         controlX = pidX(cx)
         controlY = pidY(cy)
-        servoX.setAngle(controlX)
-        servoY.setAngle(controlY)
+
+        #print(pidX.components)
+
+        controlHistoryX.append(controlX)
+        controlHistoryY.append(controlY)
+
+        if len(controlHistoryX) >=5:
+            #print("here")
+            #print(controlHistoryX[-2:-1])
+            filteredControlX = np.mean(controlHistoryX[-2:-1])
+            filteredControlY = np.mean(controlHistoryY[-2:-1])
+        else:
+            filteredControlX=controlX
+            filteredControlY=controlY
+
+        servoX.setAngle(filteredControlX)
+        servoY.setAngle(filteredControlY)
 
         deltaTime = max( 1/29 - (time.time() - timeStart),0)
         

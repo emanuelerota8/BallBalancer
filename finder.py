@@ -14,20 +14,21 @@ def preprocessPidTuning(img,scale=.5):
     
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    delta=15
-    blue_lower=np.array([100-delta,150-delta,0],np.uint8)
-    blue_upper=np.array([140+delta,255,255],np.uint8)
+    delta=0
+    blue_lower=np.array([0-delta,0-delta,0],np.uint8)
+    blue_upper=np.array([180+delta,255,30],np.uint8)
     
     mask = cv2.inRange(hsv, blue_lower, blue_upper)
-    cv2.imshow('mask',mask)
+    #cv2.imshow('mask',mask)
 
     idxs = np.argwhere(mask == 255)
     cx = cy = None
     if len(idxs) > 0:
         cy, cx = np.mean(idxs, axis=0)
-
-    image = cv2.circle(img, (int(cx),int(cy)), 10, (255,255,0), -1)
-    cv2.imshow('detectedHSV',image)
+        image = cv2.circle(img, (int(cx),int(cy)), 10, (255,255,0), -1)
+    
+        #cv2.imshow('detectedHSV',image)
+    #cv2.waitKey(1)
 
     return mask, cx,cy
 
