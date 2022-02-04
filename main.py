@@ -1,132 +1,175 @@
 import cv2
 import time
-import numpy as np
 from simple_pid import PID
-import RPi.GPIO as GPIO
-from pinInterface import setupServo,goToAngle
 from ServoControl import ServoControl
 from KalmanFiltering import KalmanFiltering
-from finder import preprocess, filterOutsidePlate, findball
+from finder import preprocess, filterOutsidePlate, findball, addCrosshair
+import argparse
+import numpy as np
+import math
+import pickle
+
+def main(args):
+    # SETTING MAX ANGLE CONTROLLABLE
+    CLIP_X_MIN = -20
+    CLIP_X_MAX = 20
+    CLIP_Y_MIN = -20
+    CLIP_Y_MAX = 20
+
+    #control history
+    controlHistoryX = []
+    controlHistoryY = []
+    posXhist = []
+    posYhist = []
+
+    # define a video capture object
+    vid = cv2.VideoCapture(0)  # 2 on laptop
+
+    servoX = ServoControl(17, CLIP_X_MIN, CLIP_X_MAX)
+    servoY = ServoControl(27, CLIP_Y_MIN, CLIP_Y_MAX)
+
+    input("Press enter to continue")
+
+    T = 1000/30
+    startup = True
+
+    kalmanX = KalmanFiltering(T)
+    kalmanY = KalmanFiltering(T)
+
+    precX = 0
+    precY = 0
+
+    for i in range(10000):
+        _, frame = vid.read()
+        timeStart = time.time()
+
+        # Ball tracking
+        frame = preprocess(frame, scale=args.scale)
+        preview = frame if args.video else None
+        frame, preview = filterOutsidePlate(frame, debug_img=preview)
+        cx, cy, preview = findball(frame, debug_img=preview)
+
+        # DEFINE PID TARGET TO THE CENTER
+        xTarget = int(frame.shape[1] /2)
+        yTarget = int(frame.shape[0] /2)
+        preview = addCrosshair(preview, x=xTarget, y=yTarget)
+
+        if cx is None:
+            cx = precX
+
+        if cy is None:
+            cy = precY
+
+        # Kalman prediction
+        if args.nokalman != True:
+            cx = kalmanX.getEstimate(cx)[0]
+            cy = kalmanY.getEstimate(cy)[0]
+        preview = addCrosshair(preview, x=cx, y=cy, color=(0,0,255), size=.05)
+
+        
+        precX = cx
+        precY = cy
+        
+        if args.circle:
+            Kp = 0.03*1
+            Ki = 0.012*3
+            Kd = 0.01875*3.5
+        else:
+            PROP = 1.1
+            Kp = 0.03*.7*PROP
+            Ki = 0.012*2.2*PROP
+            Kd = 0.01875*3.5*PROP
+
+        if startup:
+            pidX = PID(Kp, Ki, Kd, setpoint=xTarget,sample_time=T/1000)
+            pidX.output_limits = (CLIP_X_MIN, CLIP_X_MAX)
+            pidY = PID(Kp, Ki, Kd, setpoint=yTarget,sample_time=T/1000)
+            pidY.output_limits = (CLIP_Y_MIN, CLIP_Y_MAX)
+            startup = False
+            angle = 0
+
+        if args.circle:
+            angle +=1
+            angle = int(angle)
+            angle = angle%360
+            rad = angle*3.14/180
+            radius = 50-17
+
+            newX = xTarget + math.cos(rad)*radius
+            newY = yTarget + math.sin(rad)*radius
+
+            pidX.setpoint = newX
+            pidY.setpoint = newY
+
+        if args.video:
+            cv2.namedWindow('Tracker', cv2.WINDOW_KEEPRATIO)
+            cv2.imshow('Tracker', preview)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        # Apply control
+        controlX = pidX(cx)
+        controlY = pidY(cy)
+
+        controlHistoryX.append(controlX)
+        controlHistoryY.append(controlY)
+
+        if len(controlHistoryX) >=5:
+            filteredControlX = np.mean(controlHistoryX[-2:-1])
+            filteredControlY = np.mean(controlHistoryY[-2:-1])
+        else:
+            filteredControlX=controlX
+            filteredControlY=controlY
+
+        servoX.setAngle(filteredControlX)
+        servoY.setAngle(filteredControlY)
+
+        deltaTime = max( 1/29 - (time.time() - timeStart),0)
+        
+        time.sleep(deltaTime)
+
+        fps = 1 / (time.time() - timeStart)
+
+        posXhist.append(cx)
+        posYhist.append(cy)
+
+        if i % 60==0:
+            with open("history.pkl", "wb") as f:
+                pickle.dump([posXhist, posYhist], f)
+
+        print(f'FPS={fps:.1f} BALL=({cx:.2f}, {cy:.2f}) PID_CONTROL=({controlX:.2f}, {controlY:.2f})')
+
+    # After the loop release the cap object
+    vid.release()
+    # Destroy all the windows
+    cv2.destroyAllWindows()
+
+def parse_args():
+    argparser = argparse.ArgumentParser(
+        description=__doc__)
+    argparser.add_argument(
+        '--video',
+        action='store_true',
+        help='Enable video preview')
+    argparser.add_argument(
+        '--nokalman',
+        action='store_true',
+        help='disable kalman filter')
+    argparser.add_argument(
+        '--circle',
+        action='store_true',
+        help='draw circle')
+    argparser.add_argument(
+        '--scale',
+        type=float,
+        default=0.4,
+        help='Camera downscaling')
 
 
-CLIP_X_MIN =-15
-CLIP_X_MAX =15
-CLIP_Y_MIN =-15
-CLIP_Y_MAX = 15
-
-# define a video capture object
-vid = cv2.VideoCapture(0)#2 on laptop
-
-scale = 0.5
-minRadius = int(np.ceil(10 * scale))
-maxRadius = int(np.ceil(20 * scale))
-
-xCenter = []
-yCenter = []
-
-actualX = 0
-actualY = 0
-
-servoX = ServoControl(17,CLIP_X_MIN,CLIP_X_MAX)
-servoY = ServoControl(27,CLIP_Y_MIN,CLIP_Y_MAX)
-
-input("Press enter to continue")
-
-startup = True
-first = True
-misurazioniX = []
-
-kalmanX = KalmanFiltering(1/30)
-kalmanY = KalmanFiltering(1/30)
-
-while True:
-    ret, frame = vid.read()
-    
-    if False:
-        frame = frame[40:400,140:470]
-
-    frame = cv2.resize(
-        frame, (int(frame.shape[1]*scale), int(frame.shape[0]*scale)))
-
-    # cv2.namedWindow('full', cv2.WINDOW_KEEPRATIO)
-    # cv2.imshow('full', frame)
-
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
-    
-    frame = preprocess(frame)
-    frame,_ = filterOutsidePlate(frame)
-    cx,cy ,frame= findball(frame)
-
-    xTarget = int(frame.shape[1] /2)
-    yTarget = int(frame.shape[0] /2)
-    
-    if startup:
-        pidX = PID(0.9, 0.2, 0.9, setpoint=xTarget)
-        pidY = PID(0.9, 0.2, 0.9, setpoint=yTarget)
-        startup=False
-
-    
-    
-    # cv2.namedWindow('b', cv2.WINDOW_KEEPRATIO)
-    # cv2.imshow('b', frame)
-
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
-
-    if first == True:
-        actualXK = kalmanX.getEstimate(cx)[0]
-        actualYK = kalmanY.getEstimate(cy)[0]
-        first = False
-
-    if cx is not None:
-        actualXK = kalmanX.getEstimate(cx)[0]
-        actualYK = kalmanY.getEstimate(cy)[0]
+    return argparser.parse_args()
 
 
-    
-        # misurazioniX.append(actualY)
-        # print("std",np.std(misurazioniX))
-
-        processed = cv2.circle(
-            frame, (int(cx), int(cy)), 1, (255, 255, 0), 2)
-
-        processed = cv2.circle(
-            processed, (int(actualXK), int(actualYK)), 1, (0, 255, 0), 2)
-    
-    #PID controller
-    
-    controlX = pidX(actualXK)
-    controlY =  pidY(actualYK)
-    
-    
-    w = processed.shape[1]
-    h = processed.shape[0]
-
-    trueActionX =((controlX - (-w/2))/(w/2+w/2) )* (CLIP_X_MAX - CLIP_X_MIN) + CLIP_X_MIN
-    trueActionY =((controlY - (-h/2))/(h/2+h/2) )* (CLIP_Y_MAX - CLIP_Y_MIN) + CLIP_Y_MIN
-
-    servoX.setAngle(trueActionX)
-    servoY.setAngle(trueActionY)
-
-    #print(trueActionX)
-    
-
-    #print("true actionn" + str(trueActionX))
-
-
-    # cv2.namedWindow('frame', cv2.WINDOW_KEEPRATIO)
-    # cv2.imshow('frame', processed)
-
-    # if cv2.waitKey(1) & 0xFF == ord('q'):
-    #     break
-
-
-# After the loop release the cap object
-vid.release()
-# Destroy all the windows
-cv2.destroyAllWindows()
-
-pX.stop()
-pY.stop()
-GPIO.cleanup()
+if __name__ == '__main__':
+    args = parse_args()
+    main(args)
