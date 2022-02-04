@@ -7,6 +7,7 @@ from finder import preprocess, filterOutsidePlate, findball, addCrosshair
 import argparse
 import numpy as np
 import math
+import pickle
 
 def main(args):
     # SETTING MAX ANGLE CONTROLLABLE
@@ -15,11 +16,11 @@ def main(args):
     CLIP_Y_MIN = -20
     CLIP_Y_MAX = 20
 
-    DRAWCIRCLE = True
-
-    #controll history
+    #control history
     controlHistoryX = []
     controlHistoryY = []
+    posXhist = []
+    posYhist = []
 
     # define a video capture object
     vid = cv2.VideoCapture(0)  # 2 on laptop
@@ -34,9 +35,6 @@ def main(args):
 
     kalmanX = KalmanFiltering(T)
     kalmanY = KalmanFiltering(T)
-
-    # storicoX = []
-    # storicoXKalman = []
 
     precX = 0
     precY = 0
@@ -72,9 +70,15 @@ def main(args):
         precX = cx
         precY = cy
         
-        Kp = 0.03*3
-        Ki = 0.012*3
-        Kd = 0.01875*3.5
+        if args.circle:
+            Kp = 0.03*1
+            Ki = 0.012*3
+            Kd = 0.01875*3.5
+        else:
+            PROP = 1.1
+            Kp = 0.03*.7*PROP
+            Ki = 0.012*2.2*PROP
+            Kd = 0.01875*3.5*PROP
 
         if startup:
             pidX = PID(Kp, Ki, Kd, setpoint=xTarget,sample_time=T/1000)
@@ -84,16 +88,15 @@ def main(args):
             startup = False
             angle = 0
 
-        if DRAWCIRCLE:
+        if args.circle:
             angle +=1
+            angle = int(angle)
             angle = angle%360
             rad = angle*3.14/180
-            radius = 50
+            radius = 50-17
 
             newX = xTarget + math.cos(rad)*radius
             newY = yTarget + math.sin(rad)*radius
-            print(newX)
-            print(newY)
 
             pidX.setpoint = newX
             pidY.setpoint = newY
@@ -109,14 +112,10 @@ def main(args):
         controlX = pidX(cx)
         controlY = pidY(cy)
 
-        #print(pidX.components)
-
         controlHistoryX.append(controlX)
         controlHistoryY.append(controlY)
 
         if len(controlHistoryX) >=5:
-            #print("here")
-            #print(controlHistoryX[-2:-1])
             filteredControlX = np.mean(controlHistoryX[-2:-1])
             filteredControlY = np.mean(controlHistoryY[-2:-1])
         else:
@@ -132,8 +131,12 @@ def main(args):
 
         fps = 1 / (time.time() - timeStart)
 
+        posXhist.append(cx)
+        posYhist.append(cy)
 
-
+        if i % 60==0:
+            with open("history.pkl", "wb") as f:
+                pickle.dump([posXhist, posYhist], f)
 
         print(f'FPS={fps:.1f} BALL=({cx:.2f}, {cy:.2f}) PID_CONTROL=({controlX:.2f}, {controlY:.2f})')
 
@@ -141,9 +144,6 @@ def main(args):
     vid.release()
     # Destroy all the windows
     cv2.destroyAllWindows()
-
-    # np.save("storico",storicoX)
-    # np.save("kalman",storicoXKalman)
 
 def parse_args():
     argparser = argparse.ArgumentParser(
@@ -155,7 +155,11 @@ def parse_args():
     argparser.add_argument(
         '--nokalman',
         action='store_true',
-        help='Disable kalman filter')
+        help='disable kalman filter')
+    argparser.add_argument(
+        '--circle',
+        action='store_true',
+        help='draw circle')
     argparser.add_argument(
         '--scale',
         type=float,
