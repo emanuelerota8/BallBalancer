@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 
 
 def preprocess(img, scale=.5):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = cv2.resize(img, (int(img.shape[1] * scale), int(img.shape[0] * scale)))
-    img = cv2.GaussianBlur(img, (3, 3), sigmaX=0, sigmaY=0)
+    img = cv2.GaussianBlur(img, (11, 11), sigmaX=0, sigmaY=0)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     return img
 
 
@@ -75,15 +75,7 @@ def addCrosshair(img, x = 0.5, y = 0.5, size=.1, color=(255, 255, 255)):
 def main():
     cap = cv2.VideoCapture('sample_videos/test1.mkv')
 
-    historyX = []
-    historyY = []
-    historyXK = []
-    historyYK = []
-
-    T = 1000/30
-    kalmanX = KalmanFiltering(T)
-    kalmanY = KalmanFiltering(T)
-
+    
     i = 0
     while cap.isOpened():
         _, frame = cap.read()
